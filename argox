@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G&G Gourmet - Impressão Argox</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6 text-gray-800">
+
+<div id="app" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <!-- Lado Esquerdo: Formulário de Dados -->
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-2xl font-bold mb-4 text-amber-900 border-b pb-2">Cadastro de Produto</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium">Nome do Produto</label>
+                <input v-model="produto.nome" type="text" class="mt-1 w-full p-2 border rounded">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium">Data de Fabrico</label>
+                    <input v-model="produto.fab" type="text" class="mt-1 w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Data de Validade</label>
+                    <input v-model="produto.val" type="text" class="mt-1 w-full p-2 border rounded">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium">Ingredientes</label>
+                <textarea v-model="produto.ingredientes" class="mt-1 w-full p-2 border rounded" rows="2"></textarea>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium">Avisos (Alergénios)</label>
+                <input v-model="produto.avisos" type="text" class="mt-1 w-full p-2 border rounded">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium">Código de Barras</label>
+                    <input v-model="produto.codigoBarras" type="text" class="mt-1 w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">URL do QR Code</label>
+                    <input v-model="produto.qrcode" type="text" class="mt-1 w-full p-2 border rounded">
+                </div>
+            </div>
+
+            <h3 class="text-lg font-bold mt-6 mb-2 text-amber-800">Informação Nutricional</h3>
+            <div class="grid grid-cols-3 gap-2 text-sm">
+                <div class="font-bold">Nutriente</div>
+                <div class="font-bold">Quantidade</div>
+                <div class="font-bold">% VD</div>
+                
+                <label class="self-center">Valor Energético</label>
+                <input v-model="nutri.kcal_q" type="text" class="p-1 border rounded">
+                <input v-model="nutri.kcal_v" type="text" class="p-1 border rounded">
+
+                <label class="self-center">Carboidratos</label>
+                <input v-model="nutri.carb_q" type="text" class="p-1 border rounded">
+                <input v-model="nutri.carb_v" type="text" class="p-1 border rounded">
+
+                <label class="self-center">Proteínas</label>
+                <input v-model="nutri.prot_q" type="text" class="p-1 border rounded">
+                <input v-model="nutri.prot_v" type="text" class="p-1 border rounded">
+            </div>
+        </div>
+    </div>
+
+    <!-- Lado Direito: Calibração e Impressão -->
+    <div class="space-y-6">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="text-2xl font-bold mb-4 text-amber-900 border-b pb-2">Controlo e Impressão</h2>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium">Margem Horizontal (X)</label>
+                    <input v-model="calibracao.x" type="number" class="mt-1 w-full p-2 border rounded bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Margem Vertical (Y)</label>
+                    <input v-model="calibracao.y" type="number" class="mt-1 w-full p-2 border rounded bg-gray-50">
+                </div>
+            </div>
+
+            <div class="flex flex-col space-y-3">
+                <button @click="conectarImpressora" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded transition">
+                    1. Ligar Impressora (USB)
+                </button>
+                
+                <button @click="imprimir" :disabled="!porta" class="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded transition">
+                    2. Imprimir Etiqueta
+                </button>
+            </div>
+            
+            <div v-if="mensagem" :class="erro ? 'text-red-600' : 'text-green-600'" class="mt-4 font-bold text-center">
+                {{ mensagem }}
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow text-green-400 font-mono text-xs overflow-auto h-64">
+            <h3 class="text-white mb-2 font-sans font-bold">Código PPLA Gerado (Visualização):</h3>
+            <pre>{{ codigoPPLA }}</pre>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                porta: null,
+                mensagem: '',
+                erro: false,
+                calibracao: { x: 0, y: 0 },
+                produto: {
+                    nome: 'MINI PIZZA DE FILE',
+                    fab: '17/07/2026',
+                    val: '17/11/2026',
+                    ingredientes: 'Molho, Mussarela, Carne de Gado, Oregano',
+                    avisos: 'PRODUTO ARTESANAL. CONTEM GLUTEN E LACTOSE.',
+                    codigoBarras: '5000000110018',
+                    qrcode: 'https://gggourmet.com.br/produto'
+                },
+                nutri: {
+                    kcal_q: '175', kcal_v: '9',
+                    carb_q: '19', carb_v: '6',
+                    prot_q: '9', prot_v: '18'
+                }
+            }
+        },
+        computed: {
+            codigoPPLA() {
+                const offX = parseInt(this.calibracao.x) || 0;
+                const offY = parseInt(this.calibracao.y) || 0;
+                const p = (base, offset) => String(Math.max(0, base + offset)).padStart(4, '0');
+
+                let cmd = "<STX>L\r\nD11\r\nH10\r\nPI\r\n";
+                cmd += `1911S01${p(250, offY)}${p(50, offX)}${this.produto.nome}\r\n`;
+                cmd += `1911S01${p(210, offY)}${p(10, offX)}Fab: ${this.produto.fab}\r\n`;
+                cmd += `1911S01${p(190, offY)}${p(10, offX)}Val: ${this.produto.val}\r\n`;
+                cmd += `1911S01${p(160, offY)}${p(10, offX)}Ingredientes: ${this.produto.ingredientes}\r\n`;
+                cmd += `1911S01${p(130, offY)}${p(10, offX)}${this.produto.avisos}\r\n`;
+                cmd += `1E42050${p(60, offY)}${p(10, offX)}${this.produto.codigoBarras}\r\n`;
+                cmd += `1W1c050${p(150, offY)}${p(220, offX)}${this.produto.qrcode}\r\n`;
+                
+                cmd += `1911S01${p(110, offY)}${p(200, offX)}INFORMAÇÃO NUTRICIONAL\r\n`;
+                cmd += `1911S01${p(90, offY)}${p(200, offX)}Energia: ${this.nutri.kcal_q} kcal | ${this.nutri.kcal_v}%\r\n`;
+                cmd += `1911S01${p(75, offY)}${p(200, offX)}Carboid.: ${this.nutri.carb_q} g | ${this.nutri.carb_v}%\r\n`;
+                cmd += `1911S01${p(60, offY)}${p(200, offX)}Proteinas: ${this.nutri.prot_q} g | ${this.nutri.prot_v}%\r\n`;
+                
+                cmd += "E\r\n";
+                return cmd;
+            }
+        },
+        methods: {
+            async conectarImpressora() {
+                try {
+                    this.porta = await navigator.serial.requestPort();
+                    await this.porta.open({ baudRate: 9600 });
+                    this.mensagem = "Argox ligada com sucesso!";
+                    this.erro = false;
+                } catch (e) {
+                    this.mensagem = "Falha ao ligar. Verifique o cabo e as permissões.";
+                    this.erro = true;
+                    console.error(e);
+                }
+            },
+            async imprimir() {
+                if (!this.porta) return;
+                try {
+                    const encoder = new TextEncoder();
+                    const writer = this.porta.writable.getWriter();
+                    await writer.write(encoder.encode(this.codigoPPLA));
+                    writer.releaseLock();
+                    this.mensagem = "Etiqueta enviada para impressão!";
+                    this.erro = false;
+                } catch (e) {
+                    this.mensagem = "Erro na comunicação com a impressora.";
+                    this.erro = true;
+                    console.error(e);
+                }
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
